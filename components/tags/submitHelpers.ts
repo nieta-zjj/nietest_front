@@ -108,11 +108,13 @@ export const getCurrentUsername = async (): Promise<string> => {
  * 准备提交数据
  * @param tags 标签数组
  * @param variableValues 变量值数组
+ * @param taskName 任务名称
  * @returns 准备好的提交数据对象
  */
 export const prepareSubmitData = async (
     tags: Tag[],
-    variableValues: VariableValue[]
+    variableValues: VariableValue[],
+    taskName: string = "无标题任务" // 默认任务名称
 ): Promise<SubmitData> => {
     // 获取当前登录用户的名称（通过API调用）
     const username = await getCurrentUsername();
@@ -190,6 +192,7 @@ export const prepareSubmitData = async (
     // 返回最终提交数据 - 只有顶级字段不包含id
     return {
         username,
+        task_name: taskName, // 添加任务名称
         tags: tagData,
         variables,
         settings: {
@@ -216,6 +219,7 @@ interface SubmitResponse {
  */
 interface SubmitData {
     username: string;
+    task_name: string; // 新增任务名称字段
     tags: Array<Tag & { values?: string[] }>;
     variables: Record<string, Array<{ id: string; value: string }>>;
     settings: {
@@ -404,11 +408,13 @@ export const calculateTotalImages = (tags: Tag[], variableValues: VariableValue[
  * 3. 提交数据
  * @param tags 标签数组
  * @param variableValues 变量值数组
+ * @param taskName 任务名称
  * @returns Promise，解析为提交结果，或者如果验证失败则为null
  */
 export const completeSubmitProcess = async (
     tags: Tag[],
-    variableValues: VariableValue[]
+    variableValues: VariableValue[],
+    taskName: string = "无标题任务"
 ): Promise<SubmitResponse | null> => {
     // 第一步：验证
     // 先检查变量标签数量
@@ -428,7 +434,7 @@ export const completeSubmitProcess = async (
     }
 
     // 第二步：准备数据
-    const data = await prepareSubmitData(tags, variableValues);
+    const data = await prepareSubmitData(tags, variableValues, taskName);
 
     // 第三步：提交（目前是模拟提交）
     try {

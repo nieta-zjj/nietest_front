@@ -335,6 +335,16 @@ const DroppableTagsV2: React.FC = () => {
     // 存储计算出的图片总数
     const [totalImages, setTotalImages] = useState<number>(0);
 
+    // 任务名称状态
+    const [taskName, setTaskName] = useState<string>("");
+
+    // 任务名称输入模态框状态
+    const {
+        isOpen: isTaskNameModalOpen,
+        onOpen: onTaskNameModalOpen,
+        onClose: onTaskNameModalClose
+    } = useDisclosure();
+
     // 状态初始化为空数组，避免水合错误
     const [tags, setTags] = useState<Tag[]>([]);
     const [variableValues, setVariableValues] = useState<VariableValue[]>([]);
@@ -1206,23 +1216,31 @@ const DroppableTagsV2: React.FC = () => {
         const calculatedImages = calculateTotalImages(tags, variableValues);
         setTotalImages(calculatedImages);
 
-        // 如果超过1000张图片，需要二次确认
+        // 如果图片数量为0，显示错误
+        if (calculatedImages <= 0) {
+            alertService.warning("提交失败", "无法计算生成图片数量，请检查参数设置");
+            return;
+        }
+
+        // 如果超过1000张图片，需要先显示确认模态框
         if (calculatedImages > 1000) {
             onConfirmOpen();
-        } else if (calculatedImages > 0) {
-            onConfirmOpen();
-        } else {
-            alertService.warning("提交失败", "无法计算生成图片数量，请检查参数设置");
+            return;
         }
+
+        // 清空任务名称并打开任务名称输入模态框
+        setTaskName("");
+        onTaskNameModalOpen();
     };
 
     // 执行提交流程
-    const proceedWithSubmission = () => {
+    const proceedWithSubmission = (taskNameParam: string) => {
         // 导入提交工具函数
         const { completeSubmitProcess } = require("./submitHelpers");
 
         // 直接使用提交流程工具函数，所有验证逻辑都移动到了submitHelpers.ts中
-        completeSubmitProcess(tags, variableValues)
+        // 传入任务名称
+        completeSubmitProcess(tags, variableValues, taskNameParam)
             .then((result: any) => {
                 if (result) {
                     console.log("提交成功:", result);
@@ -1602,7 +1620,7 @@ const DroppableTagsV2: React.FC = () => {
                                         if (totalImages > 1000) {
                                             onSecondConfirmOpen();
                                         } else {
-                                            proceedWithSubmission();
+                                            onTaskNameModalOpen();
                                         }
                                     }}
                                 >
@@ -1640,10 +1658,54 @@ const DroppableTagsV2: React.FC = () => {
                                     color="danger"
                                     onPress={() => {
                                         onModalClose();
-                                        proceedWithSubmission();
+                                        onTaskNameModalOpen();
                                     }}
                                 >
                                     确认继续
+                                </Button>
+                            </ModalFooter>
+                        </>
+                    )}
+                </ModalContent>
+            </Modal>
+
+            {/* 任务名称输入模态框 */}
+            <Modal isOpen={isTaskNameModalOpen} onOpenChange={() => onTaskNameModalClose()}>
+                <ModalContent>
+                    {(onModalClose: () => void) => (
+                        <>
+                            <ModalHeader className="flex flex-col gap-1">
+                                输入任务名称
+                            </ModalHeader>
+                            <ModalBody>
+                                <div className="space-y-4">
+                                    <p className="text-sm text-default-500">
+                                        请为本次任务输入一个名称，便于后续识别和管理。
+                                    </p>
+                                    <Input
+                                        label="任务名称"
+                                        placeholder="输入任务名称"
+                                        value={taskName}
+                                        onValueChange={setTaskName}
+                                        autoFocus
+                                    />
+                                </div>
+                            </ModalBody>
+                            <ModalFooter>
+                                <Button color="danger" variant="light" onPress={onModalClose}>
+                                    取消
+                                </Button>
+                                <Button
+                                    color="primary"
+                                    onPress={() => {
+                                        // 如果没有输入任务名称，使用默认名称
+                                        const finalTaskName = taskName.trim() || `无标题任务_${new Date().toLocaleString()}`;
+                                        onModalClose();
+                                        proceedWithSubmission(finalTaskName);
+                                    }}
+                                    isDisabled={false}
+                                >
+                                    提交
                                 </Button>
                             </ModalFooter>
                         </>
